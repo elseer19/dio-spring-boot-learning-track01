@@ -4,22 +4,30 @@ import dio.budgeting.application.input.PersistTransactionInput;
 import dio.budgeting.application.output.TransactionOutput;
 import dio.budgeting.domain.Transaction;
 import dio.budgeting.domain.TransactionRepository;
-import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.stereotype.Service;
 
 @Service
 public class PersistTransactionUseCase {
-    private final TransactionRepository transactionRepository;
 
-    public PersistTransactionUseCase(TransactionRepository transactionRepository) {
-        this.transactionRepository = transactionRepository;
+    private final TransactionRepository repository;
+
+    public PersistTransactionUseCase(TransactionRepository repository) {
+        this.repository = repository;
     }
 
-    @Tool(name = "persist-transaction", description = "Persiste uma nova transação financeira")
     public TransactionOutput execute(PersistTransactionInput input) {
-        var transaction = transactionRepository.save(
-                new Transaction(input.description(), input.amount(), input.category()));
+        if (input.amount() <= 0) {
+            throw new IllegalArgumentException("Erro de validação: O valor da transação deve ser estritamente maior que zero. Avise o usuário que a transação não foi salva.");
+        }
 
-        return TransactionOutput.from(transaction);
+        Transaction transaction = new Transaction(input.description(), input.amount(), input.category());
+        repository.save(transaction);
+
+        return new TransactionOutput(
+                transaction.getId().toString(),
+                transaction.getDescription(),
+                transaction.getCategory().name(), 
+                (double) transaction.getAmount() 
+        );
     }
 }
